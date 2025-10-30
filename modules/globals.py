@@ -40,6 +40,7 @@ live_resizable: bool = True
 camera_input_combobox: Any | None = None # Placeholder for UI element if needed
 webcam_preview_running: bool = False
 show_fps: bool = False
+live_face_frame_skip: int = 1         # Reuse detections for this many live frames to improve FPS
 
 # System Configuration
 max_memory: int | None = None        # Memory limit in GB? (Needs clarification)

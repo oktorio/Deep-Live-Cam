@@ -1,6 +1,6 @@
 import os
 import shutil
-from typing import Any
+from typing import Any, Optional
 import insightface
 
 import cv2
@@ -13,6 +13,11 @@ from modules.utilities import get_temp_directory_path, create_temp, extract_fram
 from pathlib import Path
 
 FACE_ANALYSER = None
+_LIVE_FACE_CACHE = {
+    "faces": None,
+    "frame_shape": None,
+    "skip_counter": 0,
+}
 
 
 def get_face_analyser() -> Any:
@@ -24,17 +29,64 @@ def get_face_analyser() -> Any:
     return FACE_ANALYSER
 
 
-def get_one_face(frame: Frame) -> Any:
-    face = get_face_analyser().get(frame)
+def reset_live_face_cache() -> None:
+    _LIVE_FACE_CACHE["faces"] = None
+    _LIVE_FACE_CACHE["frame_shape"] = None
+    _LIVE_FACE_CACHE["skip_counter"] = 0
+
+
+def _should_cache_live_faces(frame: Frame) -> bool:
+    if frame is None:
+        return False
+    if not getattr(modules.globals, "webcam_preview_running", False):
+        return False
+    skip = getattr(modules.globals, "live_face_frame_skip", 0)
+    return skip is not None and skip > 0
+
+
+def _detect_faces(frame: Frame, detected_faces: Optional[Any] = None) -> Any:
+    if detected_faces is not None:
+        return detected_faces
+
+    if not _should_cache_live_faces(frame):
+        return get_face_analyser().get(frame)
+
+    skip_limit = getattr(modules.globals, "live_face_frame_skip", 0)
+    frame_shape = frame.shape[:2]
+    cache_faces = _LIVE_FACE_CACHE["faces"]
+    cache_shape = _LIVE_FACE_CACHE["frame_shape"]
+
+    if cache_shape != frame_shape:
+        # Frame resolution changed; invalidate cache
+        reset_live_face_cache()
+        cache_faces = None
+
+    if cache_faces is not None and _LIVE_FACE_CACHE["skip_counter"] > 0:
+        _LIVE_FACE_CACHE["skip_counter"] -= 1
+        return cache_faces
+
+    faces = get_face_analyser().get(frame)
+    _LIVE_FACE_CACHE["faces"] = faces
+    _LIVE_FACE_CACHE["frame_shape"] = frame_shape
+    if faces:
+        _LIVE_FACE_CACHE["skip_counter"] = skip_limit
+    else:
+        # If detection failed, try again on next frame without skipping
+        _LIVE_FACE_CACHE["skip_counter"] = 0
+    return faces
+
+
+def get_one_face(frame: Frame, detected_faces: Optional[Any] = None) -> Any:
+    faces = _detect_faces(frame, detected_faces)
     try:
-        return min(face, key=lambda x: x.bbox[0])
-    except ValueError:
+        return min(faces, key=lambda x: x.bbox[0])
+    except (ValueError, TypeError):
         return None
 
 
-def get_many_faces(frame: Frame) -> Any:
+def get_many_faces(frame: Frame, detected_faces: Optional[Any] = None) -> Any:
     try:
-        return get_face_analyser().get(frame)
+        return _detect_faces(frame, detected_faces)
     except IndexError:
         return None
 
