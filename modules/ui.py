@@ -16,6 +16,7 @@ from modules.face_analyser import (
     add_blank_map,
     has_valid_map,
     simplify_maps,
+    reset_live_face_cache,
 )
 from modules.capturer import get_video_frame, get_video_frame_total
 from modules.processors.frame.core import get_frame_processors_modules
@@ -938,7 +939,12 @@ def create_webcam_preview(camera_index: int):
     cap = VideoCapturer(camera_index)
     if not cap.start(PREVIEW_DEFAULT_WIDTH, PREVIEW_DEFAULT_HEIGHT, 60):
         update_status("Failed to start camera")
+        modules.globals.webcam_preview_running = False
+        reset_live_face_cache()
         return
+
+    modules.globals.webcam_preview_running = True
+    reset_live_face_cache()
 
     preview_label.configure(width=PREVIEW_DEFAULT_WIDTH, height=PREVIEW_DEFAULT_HEIGHT)
     PREVIEW.deiconify()
@@ -1021,6 +1027,8 @@ def create_webcam_preview(camera_index: int):
             break
 
     cap.release()
+    modules.globals.webcam_preview_running = False
+    reset_live_face_cache()
     PREVIEW.withdraw()
 
 
