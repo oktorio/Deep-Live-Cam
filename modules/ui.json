@@ -138,17 +138,17 @@
   "CTkFont": {
     "macOS": {
       "family": "Avenir",
-      "size": 18,
+      "size": 14,
       "weight": "normal"
     },
     "Windows": {
       "family": "Corbel",
-      "size": 18,
+      "size": 14,
       "weight": "normal"
     },
     "Linux": {
       "family": "Montserrat",
-      "size": 18,
+      "size": 14,
       "weight": "normal"
     }
   },
