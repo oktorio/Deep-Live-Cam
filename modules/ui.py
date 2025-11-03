@@ -153,33 +153,112 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
     root.configure()
     root.protocol("WM_DELETE_WINDOW", lambda: destroy())
 
-    source_label = ctk.CTkLabel(root, text=None)
-    source_label.place(relx=0.1, rely=0.05, relwidth=0.275, relheight=0.225)
+    header_font = ctk.CTkFont(size=18, weight="bold")
+    section_font = ctk.CTkFont(size=14, weight="bold")
 
-    target_label = ctk.CTkLabel(root, text=None)
-    target_label.place(relx=0.6, rely=0.05, relwidth=0.275, relheight=0.225)
+    main_frame = ctk.CTkFrame(root, fg_color="transparent")
+    main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+    main_frame.grid_columnconfigure(0, weight=1)
+
+    title_label = ctk.CTkLabel(
+        main_frame,
+        text=_("Workflow"),
+        font=header_font,
+        anchor="w",
+    )
+    title_label.grid(row=0, column=0, sticky="w", pady=(0, 10))
+
+    preview_frame = ctk.CTkFrame(main_frame)
+    preview_frame.grid(row=1, column=0, sticky="ew", pady=(0, 20))
+    preview_frame.grid_columnconfigure((0, 1), weight=1)
+
+    source_panel = ctk.CTkFrame(preview_frame)
+    source_panel.grid(row=0, column=0, sticky="nsew", padx=(12, 6), pady=12)
+    source_panel.grid_rowconfigure(1, weight=1)
+    source_panel.grid_columnconfigure(0, weight=1)
+
+    source_panel_title = ctk.CTkLabel(
+        source_panel, text=_("Source"), font=section_font, anchor="w"
+    )
+    source_panel_title.grid(row=0, column=0, sticky="ew", padx=12, pady=(12, 6))
+
+    source_label = ctk.CTkLabel(
+        source_panel,
+        text=_("No source selected"),
+        height=210,
+        justify="center",
+        fg_color=("#e2e8f0", "#1f2933"),
+        corner_radius=12,
+    )
+    source_label.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 12))
+
+    target_panel = ctk.CTkFrame(preview_frame)
+    target_panel.grid(row=0, column=1, sticky="nsew", padx=(6, 12), pady=12)
+    target_panel.grid_rowconfigure(1, weight=1)
+    target_panel.grid_columnconfigure(0, weight=1)
+
+    target_panel_title = ctk.CTkLabel(
+        target_panel, text=_("Target"), font=section_font, anchor="w"
+    )
+    target_panel_title.grid(row=0, column=0, sticky="ew", padx=12, pady=(12, 6))
+
+    target_label = ctk.CTkLabel(
+        target_panel,
+        text=_("No target selected"),
+        height=210,
+        justify="center",
+        fg_color=("#e2e8f0", "#1f2933"),
+        corner_radius=12,
+    )
+    target_label.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 12))
+
+    selection_frame = ctk.CTkFrame(main_frame)
+    selection_frame.grid(row=2, column=0, sticky="ew", pady=(0, 20))
+    selection_frame.grid_columnconfigure((0, 2), weight=1)
 
     select_face_button = ctk.CTkButton(
-        root, text=_("Select a face"), cursor="hand2", command=lambda: select_source_path()
+        selection_frame,
+        text=_("Select a face"),
+        cursor="hand2",
+        command=lambda: select_source_path(),
     )
-    select_face_button.place(relx=0.1, rely=0.30, relwidth=0.3, relheight=0.1)
+    select_face_button.grid(row=0, column=0, sticky="ew", padx=(12, 6), pady=12)
 
     swap_faces_button = ctk.CTkButton(
-        root, text="↔", cursor="hand2", command=lambda: swap_faces_paths()
+        selection_frame,
+        text="↔",
+        width=48,
+        cursor="hand2",
+        command=lambda: swap_faces_paths(),
     )
-    swap_faces_button.place(relx=0.45, rely=0.30, relwidth=0.1, relheight=0.1)
+    swap_faces_button.grid(row=0, column=1, padx=6, pady=12)
 
     select_target_button = ctk.CTkButton(
-        root,
+        selection_frame,
         text=_("Select a target"),
         cursor="hand2",
         command=lambda: select_target_path(),
     )
-    select_target_button.place(relx=0.6, rely=0.30, relwidth=0.3, relheight=0.1)
+    select_target_button.grid(row=0, column=2, sticky="ew", padx=(6, 12), pady=12)
+
+    options_frame = ctk.CTkFrame(main_frame)
+    options_frame.grid(row=3, column=0, sticky="ew", pady=(0, 20))
+    options_frame.grid_columnconfigure((0, 1), weight=1)
+
+    options_title = ctk.CTkLabel(
+        options_frame, text=_("Processing options"), font=section_font, anchor="w"
+    )
+    options_title.grid(row=0, column=0, columnspan=2, sticky="ew", padx=12, pady=(12, 6))
+
+    left_options = ctk.CTkFrame(options_frame, fg_color="transparent")
+    left_options.grid(row=1, column=0, sticky="nsew", padx=(12, 6), pady=(0, 12))
+
+    right_options = ctk.CTkFrame(options_frame, fg_color="transparent")
+    right_options.grid(row=1, column=1, sticky="nsew", padx=(6, 12), pady=(0, 12))
 
     keep_fps_value = ctk.BooleanVar(value=modules.globals.keep_fps)
     keep_fps_checkbox = ctk.CTkSwitch(
-        root,
+        left_options,
         text=_("Keep fps"),
         variable=keep_fps_value,
         cursor="hand2",
@@ -188,11 +267,11 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
             save_switch_states(),
         ),
     )
-    keep_fps_checkbox.place(relx=0.1, rely=0.5)
+    keep_fps_checkbox.pack(anchor="w", pady=4)
 
     keep_frames_value = ctk.BooleanVar(value=modules.globals.keep_frames)
     keep_frames_switch = ctk.CTkSwitch(
-        root,
+        left_options,
         text=_("Keep frames"),
         variable=keep_frames_value,
         cursor="hand2",
@@ -201,11 +280,11 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
             save_switch_states(),
         ),
     )
-    keep_frames_switch.place(relx=0.1, rely=0.55)
+    keep_frames_switch.pack(anchor="w", pady=4)
 
     enhancer_value = ctk.BooleanVar(value=modules.globals.fp_ui["face_enhancer"])
     enhancer_switch = ctk.CTkSwitch(
-        root,
+        left_options,
         text=_("Face Enhancer"),
         variable=enhancer_value,
         cursor="hand2",
@@ -214,11 +293,21 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
             save_switch_states(),
         ),
     )
-    enhancer_switch.place(relx=0.1, rely=0.6)
+    enhancer_switch.pack(anchor="w", pady=4)
+
+    mouth_mask_var = ctk.BooleanVar(value=modules.globals.mouth_mask)
+    mouth_mask_switch = ctk.CTkSwitch(
+        left_options,
+        text=_("Mouth Mask"),
+        variable=mouth_mask_var,
+        cursor="hand2",
+        command=lambda: setattr(modules.globals, "mouth_mask", mouth_mask_var.get()),
+    )
+    mouth_mask_switch.pack(anchor="w", pady=4)
 
     keep_audio_value = ctk.BooleanVar(value=modules.globals.keep_audio)
     keep_audio_switch = ctk.CTkSwitch(
-        root,
+        right_options,
         text=_("Keep audio"),
         variable=keep_audio_value,
         cursor="hand2",
@@ -227,11 +316,11 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
             save_switch_states(),
         ),
     )
-    keep_audio_switch.place(relx=0.6, rely=0.5)
+    keep_audio_switch.pack(anchor="w", pady=4)
 
     many_faces_value = ctk.BooleanVar(value=modules.globals.many_faces)
     many_faces_switch = ctk.CTkSwitch(
-        root,
+        right_options,
         text=_("Many faces"),
         variable=many_faces_value,
         cursor="hand2",
@@ -240,11 +329,11 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
             save_switch_states(),
         ),
     )
-    many_faces_switch.place(relx=0.6, rely=0.55)
+    many_faces_switch.pack(anchor="w", pady=4)
 
     color_correction_value = ctk.BooleanVar(value=modules.globals.color_correction)
     color_correction_switch = ctk.CTkSwitch(
-        root,
+        right_options,
         text=_("Fix Blueish Cam"),
         variable=color_correction_value,
         cursor="hand2",
@@ -253,29 +342,25 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
             save_switch_states(),
         ),
     )
-    color_correction_switch.place(relx=0.6, rely=0.6)
-
-    #    nsfw_value = ctk.BooleanVar(value=modules.globals.nsfw_filter)
-    #    nsfw_switch = ctk.CTkSwitch(root, text='NSFW filter', variable=nsfw_value, cursor='hand2', command=lambda: setattr(modules.globals, 'nsfw_filter', nsfw_value.get()))
-    #    nsfw_switch.place(relx=0.6, rely=0.7)
+    color_correction_switch.pack(anchor="w", pady=4)
 
     map_faces = ctk.BooleanVar(value=modules.globals.map_faces)
     map_faces_switch = ctk.CTkSwitch(
-        root,
+        right_options,
         text=_("Map faces"),
         variable=map_faces,
         cursor="hand2",
         command=lambda: (
             setattr(modules.globals, "map_faces", map_faces.get()),
             save_switch_states(),
-            close_mapper_window() if not map_faces.get() else None
+            close_mapper_window() if not map_faces.get() else None,
         ),
     )
-    map_faces_switch.place(relx=0.1, rely=0.65)
+    map_faces_switch.pack(anchor="w", pady=4)
 
     show_fps_value = ctk.BooleanVar(value=modules.globals.show_fps)
     show_fps_switch = ctk.CTkSwitch(
-        root,
+        right_options,
         text=_("Show FPS"),
         variable=show_fps_value,
         cursor="hand2",
@@ -284,21 +369,11 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
             save_switch_states(),
         ),
     )
-    show_fps_switch.place(relx=0.6, rely=0.65)
-
-    mouth_mask_var = ctk.BooleanVar(value=modules.globals.mouth_mask)
-    mouth_mask_switch = ctk.CTkSwitch(
-        root,
-        text=_("Mouth Mask"),
-        variable=mouth_mask_var,
-        cursor="hand2",
-        command=lambda: setattr(modules.globals, "mouth_mask", mouth_mask_var.get()),
-    )
-    mouth_mask_switch.place(relx=0.1, rely=0.45)
+    show_fps_switch.pack(anchor="w", pady=4)
 
     show_mouth_mask_box_var = ctk.BooleanVar(value=modules.globals.show_mouth_mask_box)
     show_mouth_mask_box_switch = ctk.CTkSwitch(
-        root,
+        right_options,
         text=_("Show Mouth Mask Box"),
         variable=show_mouth_mask_box_var,
         cursor="hand2",
@@ -306,26 +381,132 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
             modules.globals, "show_mouth_mask_box", show_mouth_mask_box_var.get()
         ),
     )
-    show_mouth_mask_box_switch.place(relx=0.6, rely=0.45)
+    show_mouth_mask_box_switch.pack(anchor="w", pady=4)
+
+    tuning_frame = ctk.CTkFrame(main_frame)
+    tuning_frame.grid(row=4, column=0, sticky="ew", pady=(0, 20))
+    tuning_frame.grid_columnconfigure(0, weight=1)
+
+    tuning_title = ctk.CTkLabel(
+        tuning_frame, text=_("Fine tuning"), font=section_font, anchor="w"
+    )
+    tuning_title.pack(anchor="w", padx=12, pady=(12, 6))
+
+    transparency_row = ctk.CTkFrame(tuning_frame, fg_color="transparent")
+    transparency_row.pack(fill="x", padx=12, pady=(0, 12))
+    transparency_row.grid_columnconfigure(0, weight=1)
+
+    transparency_header = ctk.CTkLabel(
+        transparency_row, text=_("Transparency"), anchor="w"
+    )
+    transparency_header.grid(row=0, column=0, sticky="w")
+
+    transparency_value_label = ctk.CTkLabel(
+        transparency_row, text="100%", anchor="e"
+    )
+    transparency_value_label.grid(row=0, column=1, sticky="e")
+
+    transparency_var = ctk.DoubleVar(value=1.0)
+
+    def on_transparency_change(value: float):
+        val = float(value)
+        modules.globals.opacity = val
+        percentage = int(val * 100)
+        transparency_value_label.configure(text=f"{percentage}%")
+
+        if percentage == 0:
+            modules.globals.fp_ui["face_enhancer"] = False
+            update_status("Transparency set to 0% - Face swapping disabled.")
+        elif percentage == 100:
+            modules.globals.face_swapper_enabled = True
+            update_status("Transparency set to 100%.")
+        else:
+            modules.globals.face_swapper_enabled = True
+            update_status(f"Transparency set to {percentage}%")
+
+    transparency_slider = ctk.CTkSlider(
+        transparency_row,
+        from_=0.0,
+        to=1.0,
+        variable=transparency_var,
+        command=on_transparency_change,
+        fg_color="#E0E0E0",
+        progress_color="#007BFF",
+        button_color="#FFFFFF",
+        button_hover_color="#CCCCCC",
+        height=6,
+        border_width=1,
+        corner_radius=3,
+    )
+    transparency_slider.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+
+    sharpness_row = ctk.CTkFrame(tuning_frame, fg_color="transparent")
+    sharpness_row.pack(fill="x", padx=12, pady=(0, 12))
+    sharpness_row.grid_columnconfigure(0, weight=1)
+
+    sharpness_header = ctk.CTkLabel(sharpness_row, text=_("Sharpness"), anchor="w")
+    sharpness_header.grid(row=0, column=0, sticky="w")
+
+    sharpness_value_label = ctk.CTkLabel(sharpness_row, text="0.0", anchor="e")
+    sharpness_value_label.grid(row=0, column=1, sticky="e")
+
+    sharpness_var = ctk.DoubleVar(value=0.0)
+
+    def on_sharpness_change(value: float):
+        modules.globals.sharpness = float(value)
+        sharpness_value_label.configure(text=f"{float(value):.1f}")
+        update_status(f"Sharpness set to {float(value):.1f}")
+
+    sharpness_slider = ctk.CTkSlider(
+        sharpness_row,
+        from_=0.0,
+        to=5.0,
+        variable=sharpness_var,
+        command=on_sharpness_change,
+        fg_color="#E0E0E0",
+        progress_color="#007BFF",
+        button_color="#FFFFFF",
+        button_hover_color="#CCCCCC",
+        height=6,
+        border_width=1,
+        corner_radius=3,
+    )
+    sharpness_slider.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+
+    actions_frame = ctk.CTkFrame(main_frame)
+    actions_frame.grid(row=5, column=0, sticky="ew", pady=(0, 20))
+    actions_frame.grid_columnconfigure((0, 1, 2), weight=1)
 
     start_button = ctk.CTkButton(
-        root, text=_("Start"), cursor="hand2", command=lambda: analyze_target(start, root)
+        actions_frame,
+        text=_("Start"),
+        cursor="hand2",
+        command=lambda: analyze_target(start, root),
     )
-    start_button.place(relx=0.15, rely=0.80, relwidth=0.2, relheight=0.05)
+    start_button.grid(row=0, column=0, padx=(12, 6), pady=12, sticky="ew")
 
     stop_button = ctk.CTkButton(
-        root, text=_("Destroy"), cursor="hand2", command=lambda: destroy()
+        actions_frame,
+        text=_("Destroy"),
+        cursor="hand2",
+        command=lambda: destroy(),
     )
-    stop_button.place(relx=0.4, rely=0.80, relwidth=0.2, relheight=0.05)
+    stop_button.grid(row=0, column=1, padx=6, pady=12, sticky="ew")
 
     preview_button = ctk.CTkButton(
-        root, text=_("Preview"), cursor="hand2", command=lambda: toggle_preview()
+        actions_frame,
+        text=_("Preview"),
+        cursor="hand2",
+        command=lambda: toggle_preview(),
     )
-    preview_button.place(relx=0.65, rely=0.80, relwidth=0.2, relheight=0.05)
+    preview_button.grid(row=0, column=2, padx=(6, 12), pady=12, sticky="ew")
 
-    # --- Camera Selection ---
-    camera_label = ctk.CTkLabel(root, text=_("Select Camera:"))
-    camera_label.place(relx=0.1, rely=0.86, relwidth=0.2, relheight=0.05)
+    camera_frame = ctk.CTkFrame(main_frame)
+    camera_frame.grid(row=6, column=0, sticky="ew", pady=(0, 20))
+    camera_frame.grid_columnconfigure(1, weight=1)
+
+    camera_label = ctk.CTkLabel(camera_frame, text=_("Select Camera:"))
+    camera_label.grid(row=0, column=0, padx=(12, 6), pady=12, sticky="w")
 
     available_cameras = get_available_cameras()
     camera_indices, camera_names = available_cameras
@@ -333,7 +514,7 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
     if not camera_names or camera_names[0] == "No cameras found":
         camera_variable = ctk.StringVar(value="No cameras found")
         camera_optionmenu = ctk.CTkOptionMenu(
-            root,
+            camera_frame,
             variable=camera_variable,
             values=["No cameras found"],
             state="disabled",
@@ -341,13 +522,13 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
     else:
         camera_variable = ctk.StringVar(value=camera_names[0])
         camera_optionmenu = ctk.CTkOptionMenu(
-            root, variable=camera_variable, values=camera_names
+            camera_frame, variable=camera_variable, values=camera_names
         )
 
-    camera_optionmenu.place(relx=0.35, rely=0.86, relwidth=0.25, relheight=0.05)
+    camera_optionmenu.grid(row=0, column=1, sticky="ew", padx=(6, 6), pady=12)
 
     live_button = ctk.CTkButton(
-        root,
+        camera_frame,
         text=_("Live"),
         cursor="hand2",
         command=lambda: webcam_preview(
@@ -364,82 +545,20 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
             else "disabled"
         ),
     )
-    live_button.place(relx=0.65, rely=0.86, relwidth=0.2, relheight=0.05)
-    # --- End Camera Selection ---
+    live_button.grid(row=0, column=2, padx=(6, 12), pady=12)
 
-    # 1) Define a DoubleVar for transparency (0 = fully transparent, 1 = fully opaque)
-    transparency_var = ctk.DoubleVar(value=1.0)
+    status_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+    status_frame.grid(row=7, column=0, sticky="ew")
+    status_frame.grid_columnconfigure(0, weight=1)
 
-    def on_transparency_change(value: float):
-        # Convert slider value to float
-        val = float(value)
-        modules.globals.opacity = val  # Set global opacity
-        percentage = int(val * 100)
-
-        if percentage == 0:
-            modules.globals.fp_ui["face_enhancer"] = False
-            update_status("Transparency set to 0% - Face swapping disabled.")
-        elif percentage == 100:
-            modules.globals.face_swapper_enabled = True
-            update_status("Transparency set to 100%.")
-        else:
-            modules.globals.face_swapper_enabled = True
-            update_status(f"Transparency set to {percentage}%")
-
-    # 2) Transparency label and slider (placed ABOVE sharpness)
-    transparency_label = ctk.CTkLabel(root, text="Transparency:")
-    transparency_label.place(relx=0.15, rely=0.69, relwidth=0.2, relheight=0.05)
-
-    transparency_slider = ctk.CTkSlider(
-        root,
-        from_=0.0,
-        to=1.0,
-        variable=transparency_var,
-        command=on_transparency_change,
-        fg_color="#E0E0E0",
-        progress_color="#007BFF",
-        button_color="#FFFFFF",
-        button_hover_color="#CCCCCC",
-        height=5,
-        border_width=1,
-        corner_radius=3,
-    )
-    transparency_slider.place(relx=0.35, rely=0.71, relwidth=0.5, relheight=0.02)
-
-    # 3) Sharpness label & slider
-    sharpness_var = ctk.DoubleVar(value=0.0)  # start at 0.0
-    def on_sharpness_change(value: float):
-        modules.globals.sharpness = float(value)
-        update_status(f"Sharpness set to {value:.1f}")
-
-    sharpness_label = ctk.CTkLabel(root, text="Sharpness:")
-    sharpness_label.place(relx=0.15, rely=0.74, relwidth=0.2, relheight=0.05)
-
-    sharpness_slider = ctk.CTkSlider(
-        root,
-        from_=0.0,
-        to=5.0,
-        variable=sharpness_var,
-        command=on_sharpness_change,
-        fg_color="#E0E0E0",
-        progress_color="#007BFF",
-        button_color="#FFFFFF",
-        button_hover_color="#CCCCCC",
-        height=5,
-        border_width=1,
-        corner_radius=3,
-    )
-    sharpness_slider.place(relx=0.35, rely=0.76, relwidth=0.5, relheight=0.02)
-
-    # Status and link at the bottom
     global status_label
-    status_label = ctk.CTkLabel(root, text=None, justify="center")
-    status_label.place(relx=0.1, rely=0.9, relwidth=0.8)
+    status_label = ctk.CTkLabel(status_frame, text=None, justify="center")
+    status_label.grid(row=0, column=0, padx=12, pady=(0, 6), sticky="ew")
 
     donate_label = ctk.CTkLabel(
-        root, text="Deep Live Cam", justify="center", cursor="hand2"
+        status_frame, text="Deep Live Cam", justify="center", cursor="hand2"
     )
-    donate_label.place(relx=0.1, rely=0.95, relwidth=0.8)
+    donate_label.grid(row=1, column=0, padx=12, pady=(0, 10), sticky="ew")
     donate_label.configure(
         text_color=ctk.ThemeManager.theme.get("URL").get("text_color")
     )
