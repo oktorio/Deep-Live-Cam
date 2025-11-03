@@ -780,10 +780,10 @@ def select_source_path() -> None:
         modules.globals.source_path = source_path
         RECENT_DIRECTORY_SOURCE = os.path.dirname(modules.globals.source_path)
         image = render_image_preview(modules.globals.source_path, (200, 200))
-        source_label.configure(image=image)
+        source_label.configure(image=image, text="")
     else:
         modules.globals.source_path = None
-        source_label.configure(image=None)
+        source_label.configure(image=None, text=_("No source selected"))
 
 
 def swap_faces_paths() -> None:
@@ -804,7 +804,7 @@ def swap_faces_paths() -> None:
     PREVIEW.withdraw()
 
     source_image = render_image_preview(modules.globals.source_path, (200, 200))
-    source_label.configure(image=source_image)
+    source_label.configure(image=source_image, text="")
 
     target_image = render_image_preview(modules.globals.target_path, (200, 200))
     target_label.configure(image=target_image)
