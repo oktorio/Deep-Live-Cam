@@ -37,30 +37,30 @@ if platform.system() == "Windows":
 ROOT = None
 POPUP = None
 POPUP_LIVE = None
-ROOT_HEIGHT = 750
-ROOT_WIDTH = 600
+ROOT_HEIGHT = 620
+ROOT_WIDTH = 520
 
 PREVIEW = None
-PREVIEW_MAX_HEIGHT = 700
-PREVIEW_MAX_WIDTH = 1200
-PREVIEW_DEFAULT_WIDTH = 960
-PREVIEW_DEFAULT_HEIGHT = 540
+PREVIEW_MAX_HEIGHT = 560
+PREVIEW_MAX_WIDTH = 960
+PREVIEW_DEFAULT_WIDTH = 768
+PREVIEW_DEFAULT_HEIGHT = 432
 
-POPUP_WIDTH = 750
-POPUP_HEIGHT = 810
-POPUP_SCROLL_WIDTH = (740,)
-POPUP_SCROLL_HEIGHT = 700
+POPUP_WIDTH = 640
+POPUP_HEIGHT = 700
+POPUP_SCROLL_WIDTH = (630,)
+POPUP_SCROLL_HEIGHT = 600
 
-POPUP_LIVE_WIDTH = 900
-POPUP_LIVE_HEIGHT = 820
-POPUP_LIVE_SCROLL_WIDTH = (890,)
-POPUP_LIVE_SCROLL_HEIGHT = 700
+POPUP_LIVE_WIDTH = 760
+POPUP_LIVE_HEIGHT = 720
+POPUP_LIVE_SCROLL_WIDTH = (750,)
+POPUP_LIVE_SCROLL_HEIGHT = 600
 
 MAPPER_PREVIEW_MAX_HEIGHT = 100
 MAPPER_PREVIEW_MAX_WIDTH = 100
 
-DEFAULT_BUTTON_WIDTH = 200
-DEFAULT_BUTTON_HEIGHT = 40
+DEFAULT_BUTTON_WIDTH = 160
+DEFAULT_BUTTON_HEIGHT = 32
 
 RECENT_DIRECTORY_SOURCE = None
 RECENT_DIRECTORY_TARGET = None
@@ -144,6 +144,7 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
     ctk.deactivate_automatic_dpi_awareness()
     ctk.set_appearance_mode("system")
     ctk.set_default_color_theme(resolve_relative_path("ui.json"))
+    ctk.set_widget_scaling(0.9)
 
     root = ctk.CTk()
     root.minsize(ROOT_WIDTH, ROOT_HEIGHT)
@@ -153,11 +154,11 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
     root.configure()
     root.protocol("WM_DELETE_WINDOW", lambda: destroy())
 
-    header_font = ctk.CTkFont(size=18, weight="bold")
-    section_font = ctk.CTkFont(size=14, weight="bold")
+    header_font = ctk.CTkFont(size=16, weight="bold")
+    section_font = ctk.CTkFont(size=12, weight="bold")
 
     main_frame = ctk.CTkFrame(root, fg_color="transparent")
-    main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+    main_frame.pack(fill="both", expand=True, padx=16, pady=16)
     main_frame.grid_columnconfigure(0, weight=1)
 
     title_label = ctk.CTkLabel(
@@ -185,7 +186,7 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
     source_label = ctk.CTkLabel(
         source_panel,
         text=_("No source selected"),
-        height=210,
+        height=160,
         justify="center",
         fg_color=("#e2e8f0", "#1f2933"),
         corner_radius=12,
@@ -205,7 +206,7 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
     target_label = ctk.CTkLabel(
         target_panel,
         text=_("No target selected"),
-        height=210,
+        height=160,
         justify="center",
         fg_color=("#e2e8f0", "#1f2933"),
         corner_radius=12,
@@ -779,7 +780,7 @@ def select_source_path() -> None:
     if is_image(source_path):
         modules.globals.source_path = source_path
         RECENT_DIRECTORY_SOURCE = os.path.dirname(modules.globals.source_path)
-        image = render_image_preview(modules.globals.source_path, (200, 200))
+        image = render_image_preview(modules.globals.source_path, (160, 160))
         source_label.configure(image=image, text="")
     else:
         modules.globals.source_path = None
@@ -803,10 +804,10 @@ def swap_faces_paths() -> None:
 
     PREVIEW.withdraw()
 
-    source_image = render_image_preview(modules.globals.source_path, (200, 200))
+    source_image = render_image_preview(modules.globals.source_path, (160, 160))
     source_label.configure(image=source_image, text="")
 
-    target_image = render_image_preview(modules.globals.target_path, (200, 200))
+    target_image = render_image_preview(modules.globals.target_path, (160, 160))
     target_label.configure(image=target_image)
 
 
@@ -822,12 +823,12 @@ def select_target_path() -> None:
     if is_image(target_path):
         modules.globals.target_path = target_path
         RECENT_DIRECTORY_TARGET = os.path.dirname(modules.globals.target_path)
-        image = render_image_preview(modules.globals.target_path, (200, 200))
+        image = render_image_preview(modules.globals.target_path, (160, 160))
         target_label.configure(image=image)
     elif is_video(target_path):
         modules.globals.target_path = target_path
         RECENT_DIRECTORY_TARGET = os.path.dirname(modules.globals.target_path)
-        video_frame = render_video_preview(target_path, (200, 200))
+        video_frame = render_video_preview(target_path, (160, 160))
         target_label.configure(image=video_frame)
     else:
         modules.globals.target_path = None
