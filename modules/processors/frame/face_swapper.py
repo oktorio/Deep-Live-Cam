@@ -58,47 +58,79 @@ def pre_start() -> bool:
     return True
 
 
-def get_face_swapper() -> Any:
+def _format_providers(providers: List[str]) -> List[Any]:
+    """Apply provider-specific configuration (e.g., CoreML settings)."""
+
+    return [
+        (
+            (
+                "CoreMLExecutionProvider",
+                {
+                    "ModelFormat": "MLProgram",
+                    "MLComputeUnits": "CPUAndGPU",
+                    "SpecializationStrategy": "FastPrediction",
+                    "AllowLowPrecisionAccumulationOnGPU": 1,
+                },
+            )
+            if provider == "CoreMLExecutionProvider"
+            else provider
+        )
+        for provider in providers
+    ]
+
+
+def _select_model_name(providers: List[str]) -> str:
+    """Return the appropriate model filename for the given providers."""
+
+    if "CUDAExecutionProvider" in providers:
+        return "inswapper_128_fp16.onnx"
+    return "inswapper_128.onnx"
+
+
+def _load_face_swapper(providers: List[str]) -> Any:
+    """Load the face swapper using the requested providers."""
+
+    model_name = _select_model_name(providers)
+    model_path = os.path.join(models_dir, model_name)
+    update_status(f"Loading face swapper model from: {model_path}", NAME)
+    formatted_providers = _format_providers(providers)
+    return insightface.model_zoo.get_model(
+        model_path,
+        providers=formatted_providers,
+    )
+
+
+def get_face_swapper(force_cpu: bool = False) -> Any:
+    """Return a cached face swapper model, optionally forcing CPU fallback."""
+
     global FACE_SWAPPER
 
     with THREAD_LOCK:
-        if FACE_SWAPPER is None:
-            model_name = "inswapper_128.onnx"
-            if "CUDAExecutionProvider" in modules.globals.execution_providers:
-                model_name = "inswapper_128_fp16.onnx"
-            model_path = os.path.join(models_dir, model_name)
-            update_status(f"Loading face swapper model from: {model_path}", NAME)
+        if FACE_SWAPPER is None or force_cpu:
+            providers = ["CPUExecutionProvider"] if force_cpu else modules.globals.execution_providers
             try:
-                # Ensure the providers list is correctly passed
-                # Apply CoreML optimization for Mac systems
-                FACE_SWAPPER = insightface.model_zoo.get_model(
-                    model_path,
-                    providers=[
-                        (
-                            (
-                                "CoreMLExecutionProvider",
-                                {
-                                    "ModelFormat": "MLProgram",
-                                    "MLComputeUnits": "CPUAndGPU",
-                                    "SpecializationStrategy": "FastPrediction",
-                                    "AllowLowPrecisionAccumulationOnGPU": 1,
-                                },
-                            )
-                            if p == "CoreMLExecutionProvider"
-                            else p
-                        )
-                        for p in modules.globals.execution_providers
-                    ],
-                )
+                FACE_SWAPPER = _load_face_swapper(providers)
                 update_status("Face swapper model loaded successfully.", NAME)
             except Exception as e:
                 update_status(f"Error loading face swapper model: {e}", NAME)
-                # print traceback maybe?
-                # import traceback
-                # traceback.print_exc()
-                FACE_SWAPPER = None # Ensure it remains None on failure
+                FACE_SWAPPER = None
                 return None
     return FACE_SWAPPER
+
+
+def _should_retry_on_cpu(error: Exception) -> bool:
+    """Return True if the error suggests a CUDA provider failure."""
+
+    message = str(error).lower()
+    return (
+        "cublas_status_execution_failed" in message
+        or "cuda failure" in message
+        or "operation not permitted when stream is capturing" in message
+    )
+
+
+def _run_swap(face_swapper: Any, source_face: Face, target_face: Face, temp_frame: Frame) -> Any:
+    return face_swapper.get(temp_frame, target_face, source_face, paste_back=True)
 
 
 def swap_face(source_face: Face, target_face: Face, temp_frame: Frame) -> Frame:
@@ -117,42 +149,60 @@ def swap_face(source_face: Face, target_face: Face, temp_frame: Frame) -> Frame:
     # --- End Input Check ---
 
     # Apply the face swap
+    swapped_frame_raw = None
     try:
-        swapped_frame_raw = face_swapper.get(
-            temp_frame, target_face, source_face, paste_back=True
-        )
-
-        # --- START: CRITICAL FIX FOR ORT 1.17 ---
-        # Check the output type and range from the model
-        if swapped_frame_raw is None:
-             # print("Warning: face_swapper.get returned None.") # Debug
-             return original_frame # Return original if swap somehow failed internally
-
-        # Ensure the output is a numpy array
-        if not isinstance(swapped_frame_raw, np.ndarray):
-            # print(f"Warning: face_swapper.get returned type {type(swapped_frame_raw)}, expected numpy array.") # Debug
-            return original_frame
-
-        # Ensure the output has the correct shape (like the input frame)
-        if swapped_frame_raw.shape != temp_frame.shape:
-             # print(f"Warning: Swapped frame shape {swapped_frame_raw.shape} differs from input {temp_frame.shape}.") # Debug
-             # Attempt resize (might distort if aspect ratio changed, but better than crashing)
-             try:
-                 swapped_frame_raw = cv2.resize(swapped_frame_raw, (temp_frame.shape[1], temp_frame.shape[0]))
-             except Exception as resize_e:
-                 # print(f"Error resizing swapped frame: {resize_e}") # Debug
-                 return original_frame
-
-        # Explicitly clip values to 0-255 and convert to uint8
-        # This handles cases where the model might output floats or values outside the valid range
-        swapped_frame = np.clip(swapped_frame_raw, 0, 255).astype(np.uint8)
-        # --- END: CRITICAL FIX FOR ORT 1.17 ---
-
+        swapped_frame_raw = _run_swap(face_swapper, source_face, target_face, temp_frame)
     except Exception as e:
         print(f"Error during face swap using face_swapper.get: {e}") # More specific error
-        # import traceback
-        # traceback.print_exc() # Print full traceback for debugging
-        return original_frame # Return original if swap fails
+
+        # Automatically retry on CPU if a CUDA provider failed mid-run
+        if _should_retry_on_cpu(e):
+            update_status(
+                "CUDA provider failed during swap; reloading model on CPU and retrying once...",
+                NAME,
+            )
+            # Reset cached model to force reload with CPU provider
+            global FACE_SWAPPER
+            with THREAD_LOCK:
+                FACE_SWAPPER = None
+
+            cpu_swapper = get_face_swapper(force_cpu=True)
+            if cpu_swapper is not None:
+                try:
+                    swapped_frame_raw = _run_swap(cpu_swapper, source_face, target_face, temp_frame)
+                except Exception as cpu_error:
+                    print(f"CPU retry for face swap also failed: {cpu_error}")
+                    return original_frame
+            else:
+                return original_frame
+        else:
+            return original_frame # Return original if swap fails
+
+    # --- START: CRITICAL FIX FOR ORT 1.17 ---
+    # Check the output type and range from the model
+    if swapped_frame_raw is None:
+         # print("Warning: face_swapper.get returned None.") # Debug
+         return original_frame # Return original if swap somehow failed internally
+
+    # Ensure the output is a numpy array
+    if not isinstance(swapped_frame_raw, np.ndarray):
+        # print(f"Warning: face_swapper.get returned type {type(swapped_frame_raw)}, expected numpy array.") # Debug
+        return original_frame
+
+    # Ensure the output has the correct shape (like the input frame)
+    if swapped_frame_raw.shape != temp_frame.shape:
+         # print(f"Warning: Swapped frame shape {swapped_frame_raw.shape} differs from input {temp_frame.shape}.") # Debug
+         # Attempt resize (might distort if aspect ratio changed, but better than crashing)
+         try:
+             swapped_frame_raw = cv2.resize(swapped_frame_raw, (temp_frame.shape[1], temp_frame.shape[0]))
+         except Exception as resize_e:
+             # print(f"Error resizing swapped frame: {resize_e}") # Debug
+             return original_frame
+
+    # Explicitly clip values to 0-255 and convert to uint8
+    # This handles cases where the model might output floats or values outside the valid range
+    swapped_frame = np.clip(swapped_frame_raw, 0, 255).astype(np.uint8)
+    # --- END: CRITICAL FIX FOR ORT 1.17 ---
 
     # --- Post-swap Processing (Masking, Opacity, etc.) ---
     # Now, work with the guaranteed uint8 'swapped_frame'
