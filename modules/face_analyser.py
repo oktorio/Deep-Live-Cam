@@ -25,7 +25,15 @@ def get_face_analyser() -> Any:
 
     if FACE_ANALYSER is None:
         FACE_ANALYSER = insightface.app.FaceAnalysis(name='buffalo_l', providers=modules.globals.execution_providers)
-        FACE_ANALYSER.prepare(ctx_id=0, det_size=(640, 640))
+        det_size = (640, 640)
+        FACE_ANALYSER.prepare(ctx_id=0, det_size=det_size)
+
+        # Some versions of insightface fail to propagate ``det_size`` to
+        # ``det_model.input_size`` which triggers an assertion error during
+        # detection. Guard against this by setting a sensible default when the
+        # detector has not been initialised correctly.
+        if getattr(FACE_ANALYSER.det_model, "input_size", None) is None:
+            FACE_ANALYSER.det_model.input_size = det_size
     return FACE_ANALYSER
 
 
@@ -47,6 +55,9 @@ def _should_cache_live_faces(frame: Frame) -> bool:
 def _detect_faces(frame: Frame, detected_faces: Optional[Any] = None) -> Any:
     if detected_faces is not None:
         return detected_faces
+
+    if frame is None or getattr(frame, "size", 0) == 0:
+        return []
 
     if not _should_cache_live_faces(frame):
         return get_face_analyser().get(frame)
